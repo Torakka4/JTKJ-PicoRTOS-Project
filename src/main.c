@@ -38,48 +38,30 @@ static void btn_fxn(uint gpio, uint32_t eventMask) {
 
 static void sensor_task(void *arg){
     (void)arg;
-    init_veml6030();
+    float ax, ay, az, gx, gy, gz, t; // Kiihtyvyys- ja gyroskooppiarvot sekä lämpötila
 
-    // Tehtävä 2: Alusta valoisuusanturi. Etsi SDK-dokumentaatiosta sopiva funktio.
-    // Exercise 2: Init the light sensor. Find in the SDK documentation the adequate function.
-   
-    for(;;){
-        
-        // Tehtävä 2: Muokkaa tästä eteenpäin sovelluskoodilla. Kommentoi seuraava rivi.
-        //             
-        // Exercise 2: Modify with application code here. Comment following line.
-        //             Read sensor data and print it out as string; 
-        tight_loop_contents(); 
-        luminance = veml6030_read_light();
-        printf("Luminance: %u\n", (unsigned long)luminance());
-        if (programState == WAITING) {
-            ambientLight = veml6030_read_light();
-            programState = DATA_READY;
+    if (init_ICM42670() != 0) // Tarkistetaan että kiihtyvyysanturi alustui oikein
+    {
+        printf("IMUn alustus epäonnistui");
+        vTaskDelete(NULL);
+    }
+    if ((ICM42670_start_with_default_values() != 0) != 0)
+    {
+        printf("kiihtyvyysanturin käynnistys epäonnistui");
+        vTaskDelete(NULL);
+    }
+
+    for (;;){
+        int tila = ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t); // luetaan anturin arvot ja tarkistetaan onnistuiko arvojen lukeminen
+        if (tila == 0) // palautukoodi oikein voidaan jatkaa tulostamaan arvoja
+        {
+            printf("Picon asento: X=%f, Y=%f, Z=%f\n", ax, ay, az);
         }
-
-   
-
-
-        // Tehtävä 3:  Muokkaa aiemmin Tehtävässä 2 tehtyä koodia ylempänä.
-        //             Jos olet oikeassa tilassa, tallenna anturin arvo tulostamisen sijaan
-        //             globaaliin muuttujaan.
-        //             Sen jälkeen muuta tilaa.
-        // Exercise 3: Modify previous code done for Exercise 2, in previous lines. 
-        //             If you are in adequate state, instead of printing save the sensor value 
-        //             into the global variable.
-        //             After that, modify state
-
-
-
-
-
-        
-        // Exercise 2. Just for sanity check. Please, comment this out
-        // Tehtävä 2: Just for sanity check. Please, comment this out
-        // printf("sensorTask\n");
-
-        // Do not remove this
-        vTaskDelay(pdMS_TO_TICKS(500));
+        else
+        {
+            printf("IMU datan lukeminen epäonnistui");   
+        }
+        vTaskDelay(pdMS_TO_TICKS(500)); // tulostetaan x,y,z arvo 500ms välein
     }
 }
 
@@ -96,7 +78,7 @@ static void print_task(void *arg){
         //             Do not forget to comment next line of code.
         // tight_loop_contents();
         if (programState == DATA_READY) {
-            printf("Luminance: %u \n", (unsigned long)ambientLight);
+            printf("Light: %lu lux\n", (unsigned long)ambientLight);
             programState = WAITING;
         }
 

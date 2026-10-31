@@ -6,7 +6,7 @@
             "statusBarVisibility": "visible"
         },
         "launch": {
-            "statusBarVisibility": "hidden"
+            "statusBarVisibility": "visible"
         },
         "debug": {
             "statusBarVisibility": "hidden"
