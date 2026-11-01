@@ -17,6 +17,7 @@
 
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
+#define Morse_Puskuri_Koko 128
 
 
 // Tehtävä 3: Tilakoneen esittely Add missing states.
@@ -38,30 +39,76 @@ static void btn_fxn(uint gpio, uint32_t eventMask) {
 
 static void sensor_task(void *arg){
     (void)arg;
-    float ax, ay, az, gx, gy, gz, t; // Kiihtyvyys- ja gyroskooppiarvot sekä lämpötila
+    float ax, ay, az, gx, gy, gz, t; // muuttujat kiihtyvyys- ja gyroskooppiarvoille sekä lämpötilalle
+    char MorsePuskuri[Morse_Puskuri_Koko] = "";
+    size_t MorsePituus = 0;
+    
 
     if (init_ICM42670() != 0) // Tarkistetaan että kiihtyvyysanturi alustui oikein
     {
         printf("IMUn alustus epäonnistui");
         vTaskDelete(NULL);
     }
-    if ((ICM42670_start_with_default_values() != 0) != 0)
+    if (ICM42670_start_with_default_values() != 0)
     {
         printf("kiihtyvyysanturin käynnistys epäonnistui");
         vTaskDelete(NULL);
     }
 
     for (;;){
-        int tila = ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t); // luetaan anturin arvot ja tarkistetaan onnistuiko arvojen lukeminen
-        if (tila == 0) // palautukoodi oikein voidaan jatkaa tulostamaan arvoja
+        int tila = ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t); 
+        int SW1_Painettu = gpio_get(SW1_PIN); // Tunnistaa onko SW1 painettu. 0 = ei painettu, 1 = painettu
+        int SW2_Painettu = gpio_get(SW2_PIN); // Tunnistaa onko SW2 painettu. 0 = ei painettu, 1 = painettu
+        if (tila == 0) // mikäli palautukoodi 0 voidaan jatkaa ohjelmaa
         {
             printf("Picon asento: X=%f, Y=%f, Z=%f\n", ax, ay, az);
         }
-        else
+        else // jos palautuskoodi eroaa arvosta 0 tulostetaan virhekoodi
         {
             printf("IMU datan lukeminen epäonnistui");   
+            vTaskDelete(NULL);
         }
-        vTaskDelay(pdMS_TO_TICKS(500)); // tulostetaan x,y,z arvo 500ms välein
+        if (SW1_Painettu && !SW2_Painettu) // tunnistetaan napin painallus luodaan piste tai viiva x-akselin arvon perusteella
+        {
+            char merkki = ' ';
+            if (ax > 0.0f) 
+            {
+                merkki = '.';
+            }
+            else if (ax < 0.0f)
+            {
+                merkki = '-';
+            }
+            if (merkki != ' ' && MorsePituus < Morse_Puskuri_Koko - 1) // tarkistetaan että puskurissa on tilaa
+            {
+                MorsePuskuri[MorsePituus] = merkki;
+                MorsePituus++;
+                MorsePuskuri[MorsePituus] = '\0';
+                printf("Morse puskuri: %s\n", MorsePuskuri);
+            }
+            else if (MorsePituus == Morse_Puskuri_Koko - 1) 
+            {
+                MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
+                printf("Morse puskuri täynnä\n");
+            }
+        }
+        if (SW2_Painettu && !SW1_Painettu) // tunnistetaan napin painallus ja tulostetaan puskurin sisältö
+        {
+            char välilyönti = ' ';
+            if (MorsePituus < Morse_Puskuri_Koko - 1)
+            {
+                MorsePuskuri[MorsePituus] = välilyönti;
+                MorsePituus++;
+                MorsePuskuri[MorsePituus] = '\0'; // loppunolla korvataan jos merkkejä tulee lisää
+                printf("Morse puskuri: %s\n", MorsePuskuri);
+            }
+            else if (MorsePituus == Morse_Puskuri_Koko - 1) 
+            {
+                MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
+                printf("Morse puskuri täynnä\n");
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Tarkistetaan 1 sekunnin intervalleilla onko sw1 tai sw2 painettu.
     }
 }
 
@@ -148,8 +195,9 @@ int main() {
     init_hat_sdk();
     sleep_ms(300); //Wait some time so initialization of USB and hat is done.
     init_sw1 ();
+    init_sw2();
     init_led();
-    gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, btn_fxn);
+    // gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, btn_fxn);
 
     // Exercise 1: Initialize the button and the led and define an register the corresponding interrupton.
     //             Interruption handler is defined up as btn_fxn
