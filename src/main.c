@@ -17,7 +17,7 @@
 
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
-#define Morse_Puskuri_Koko 128
+#define MORSE_PUSKURIN_KOKO 128
 
 
 // Tehtävä 3: Tilakoneen esittely Add missing states.
@@ -40,7 +40,7 @@ static void btn_fxn(uint gpio, uint32_t eventMask) {
 static void sensor_task(void *arg){
     (void)arg;
     float ax, ay, az, gx, gy, gz, t; // muuttujat kiihtyvyys- ja gyroskooppiarvoille sekä lämpötilalle
-    char MorsePuskuri[Morse_Puskuri_Koko] = "";
+    char MorsePuskuri[MORSE_PUSKURIN_KOKO] = "";
     size_t MorsePituus = 0;
     
 
@@ -74,19 +74,21 @@ static void sensor_task(void *arg){
             if (ax > 0.0f) 
             {
                 merkki = '.';
+                buzzer_play_tone(700, 100); // soitetaan pisteen äänimerkki
             }
             else if (ax < 0.0f)
             {
                 merkki = '-';
+                buzzer_play_tone(700, 300); // soitetaan viivan äänimerkki
             }
-            if (merkki != ' ' && MorsePituus < Morse_Puskuri_Koko - 1) // tarkistetaan että puskurissa on tilaa
+            if (merkki != ' ' && MorsePituus < MORSE_PUSKURIN_KOKO - 1) // tarkistetaan että puskurissa on tilaa
             {
-                MorsePuskuri[MorsePituus] = merkki;
+                MorsePuskuri[MorsePituus] = merkki; // asetetaan merkki puskurin alkioihin alkaen nollasta
                 MorsePituus++;
-                MorsePuskuri[MorsePituus] = '\0';
+                MorsePuskuri[MorsePituus] = '\0'; // laitetaan nolla merkkijonon loppuun ennen tulostusta
                 printf("Morse puskuri: %s\n", MorsePuskuri);
             }
-            else if (MorsePituus == Morse_Puskuri_Koko - 1) 
+            else if (MorsePituus == MORSE_PUSKURIN_KOKO - 1) 
             {
                 MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
                 printf("Morse puskuri täynnä\n");
@@ -95,14 +97,14 @@ static void sensor_task(void *arg){
         if (SW2_Painettu && !SW1_Painettu) // tunnistetaan napin painallus ja tulostetaan puskurin sisältö
         {
             char välilyönti = ' ';
-            if (MorsePituus < Morse_Puskuri_Koko - 1)
+            if (MorsePituus < MORSE_PUSKURIN_KOKO - 1)
             {
-                MorsePuskuri[MorsePituus] = välilyönti;
+                MorsePuskuri[MorsePituus] = välilyönti; // asetetaan välilyönti MorsePituus kohtaan puskurissa
                 MorsePituus++;
                 MorsePuskuri[MorsePituus] = '\0'; // loppunolla korvataan jos merkkejä tulee lisää
                 printf("Morse puskuri: %s\n", MorsePuskuri);
             }
-            else if (MorsePituus == Morse_Puskuri_Koko - 1) 
+            else if (MorsePituus == MORSE_PUSKURIN_KOKO - 1) 
             {
                 MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
                 printf("Morse puskuri täynnä\n");
@@ -194,6 +196,7 @@ int main() {
     
     init_hat_sdk();
     sleep_ms(300); //Wait some time so initialization of USB and hat is done.
+    init_buzzer();
     init_sw1 ();
     init_sw2();
     init_led();
