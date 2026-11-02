@@ -20,6 +20,7 @@
 #define MORSE_PUSKURIN_KOKO 128
 
 
+
 // Tehtävä 3: Tilakoneen esittely Add missing states.
 // Exercise 3: Definition of the state machine. Add missing states.
 enum state { WAITING=1, DATA_READY=2 };
@@ -37,12 +38,13 @@ static void btn_fxn(uint gpio, uint32_t eventMask) {
 
 }
 
+static char MorsePuskuri[MORSE_PUSKURIN_KOKO] = ""; //sensor_task morse viestin puskuri
+static size_t MorsePituus = 0; // sensor_task morse viestin pituus
+
 static void sensor_task(void *arg){
     (void)arg;
     float ax, ay, az, gx, gy, gz, t; // muuttujat kiihtyvyys- ja gyroskooppiarvoille sekä lämpötilalle
-    char MorsePuskuri[MORSE_PUSKURIN_KOKO] = "";
-    size_t MorsePituus = 0;
-    
+
 
     if (init_ICM42670() != 0) // Tarkistetaan että kiihtyvyysanturi alustui oikein
     {
