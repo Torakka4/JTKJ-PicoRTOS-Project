@@ -118,12 +118,16 @@ static void sensor_task(void *arg){
                 MorsePuskuri[MorsePituus] = merkki; // asetetaan merkki puskurin alkioihin alkaen nollasta
                 MorsePituus++;
                 MorsePuskuri[MorsePituus] = '\0'; // laitetaan nolla merkkijonon loppuun ennen tulostusta
-                printf("Morse puskuri: %s\n", MorsePuskuri);
+                char debug[160];
+                snprintf(debug, sizeof(debug), "Morse puskuri: %s\n", MorsePuskuri);
+                usb_serial_print(debug);
             }
             else if (MorsePituus == MORSE_PUSKURIN_KOKO - 1) 
             {
                 MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
-                printf("Morse puskuri täynnä\n");
+                char debug[160];
+                snprintf(debug, sizeof(debug), "Morse puskuri täynnä\n");
+                usb_serial_print(debug);
             }
         }
         if (SW2_Painettu && !SW1_Painettu) // tunnistetaan napin painallus ja tulostetaan puskurin sisältö
@@ -134,12 +138,16 @@ static void sensor_task(void *arg){
                 MorsePuskuri[MorsePituus] = välilyönti; // asetetaan välilyönti MorsePituus kohtaan puskurissa
                 MorsePituus++;
                 MorsePuskuri[MorsePituus] = '\0'; // loppunolla korvataan jos merkkejä tulee lisää
-                printf("Morse puskuri: %s\n", MorsePuskuri);
+                char debug[160];
+                    snprintf(debug, sizeof(debug), "Morse puskuri: %s\n", MorsePuskuri);
+                    usb_serial_print(debug);
             }
             else if (MorsePituus == MORSE_PUSKURIN_KOKO - 1) 
             {
                 MorsePuskuri[MorsePituus] = '\0'; // Loppunolla merkkijonon päätteeksi
-                printf("Morse puskuri täynnä\n");
+                char debug[160];
+                snprintf(debug, sizeof(debug), "Morse puskuri täynnä\n");
+                usb_serial_print(debug);
             }
         }
         vTaskDelay(pdMS_TO_TICKS(1000)); // Tarkistetaan 1 sekunnin intervalleilla onko sw1 tai sw2 painettu.
