@@ -1,14 +1,13 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include <pico/stdlib.h>
-
 #include <FreeRTOS.h>
 #include <queue.h>
 #include <task.h>
-
 #include "tkjhat/sdk.h"
+#include <tusb.h>
+#include "usbSerialDebug/helper.h"
 
 // Exercise 4. Include the libraries necessaries to use the usb-serial-debug, and tinyusb
 // Tehtävä 4 . Lisää usb-serial-debugin ja tinyusbin käyttämiseen tarvittavat kirjastot.
@@ -45,6 +44,9 @@ static void sensor_task(void *arg){
     (void)arg;
     float ax, ay, az, gx, gy, gz, t; // muuttujat kiihtyvyys- ja gyroskooppiarvoille sekä lämpötilalle
 
+    // katsotaan onko lähetyspainallus jo käsitelty
+    int PainallusKasitelty = 0;
+
 
     if (init_ICM42670() != 0) // Tarkistetaan että kiihtyvyysanturi alustui oikein
     {
@@ -61,15 +63,43 @@ static void sensor_task(void *arg){
         int tila = ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t); 
         int SW1_Painettu = gpio_get(SW1_PIN); // Tunnistaa onko SW1 painettu. 0 = ei painettu, 1 = painettu
         int SW2_Painettu = gpio_get(SW2_PIN); // Tunnistaa onko SW2 painettu. 0 = ei painettu, 1 = painettu
+
         if (tila == 0) // mikäli palautukoodi 0 voidaan jatkaa ohjelmaa
+
         {
-            printf("Picon asento: X=%f, Y=%f, Z=%f\n", ax, ay, az);
+            char debug[128]; // tallennetaan kiihtyvyysanturin arvot ja tulostetaan ne 
+                snprintf(debug, sizeof(debug),
+                "Picon asento: X=%f, Y=%f, Z=%f\n", ax, ay, az);
+                usb_serial_print(debug);
         }
         else // jos palautuskoodi eroaa arvosta 0 tulostetaan virhekoodi
         {
             printf("IMU datan lukeminen epäonnistui");   
             vTaskDelete(NULL);
         }
+
+        if (SW1_Painettu && SW2_Painettu) // käsitellään lähetyspainallus vain kerran
+            {
+                if (!PainallusKasitelty)
+                {
+                    if (MorsePituus > 0 && tud_cdc_n_connected(CDC_ITF_TX))
+                    {
+                        // Lähetetään morseviesti USB:n CDC 1 -porttiin
+                        tud_cdc_n_write(CDC_ITF_TX, MorsePuskuri, strlen(MorsePuskuri));
+                        tud_cdc_n_write(CDC_ITF_TX, "  \n", 3);
+                        tud_cdc_n_write_flush(CDC_ITF_TX);
+
+                        MorsePuskuri[0] = '\0'; // Tyhjennetään morsepuskuri
+                        MorsePituus = 0;
+                    }
+                    PainallusKasitelty = 1;
+                }
+            }
+        else
+            {
+                PainallusKasitelty = 0;
+            }
+
         if (SW1_Painettu && !SW2_Painettu) // tunnistetaan napin painallus luodaan piste tai viiva x-akselin arvon perusteella
         {
             char merkki = ' ';
@@ -116,65 +146,18 @@ static void sensor_task(void *arg){
     }
 }
 
-static void print_task(void *arg){
-    (void)arg;
-    
-    while(1){
-        
-        // Tehtävä 3: Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
-        //            Muista tilamuutos
-        //            Älä unohda kommentoida seuraavaa koodiriviä.
-        // Exercise 3: Print out sensor data as string to debug window if the state is correct
-        //             Remember to modify state
-        //             Do not forget to comment next line of code.
-        // tight_loop_contents();
-        if (programState == DATA_READY) {
-            printf("Light: %lu lux\n", (unsigned long)ambientLight);
-            programState = WAITING;
-        }
-
-        
-        // Exercise 4. Use usb_serial_print() instead of printf() for debug output
-        //             produced after the USB serial library has been initialized.
-        //             Do not replace error messages that can execute before usb_serial_init().
-        //             Use the TinyUSB library to send data through the other serial port (CDC 1).
-        //             You can use the functions at https://github.com/hathach/tinyusb/blob/master/src/class/cdc/cdc_device.h
-        //             You can find an example at hello_dual_cdc
-        //             The data written using this should be provided using csv
-        //             timestamp, illuminance
-        // Tehtävä 4. Käytä usb_serial_print()-funktiota printf()-funktion sijaan
-        //            debug-tulostukseen sen jälkeen, kun USB-sarjaliikennekirjasto on alustettu.
-        //            Älä korvaa virheilmoituksia, jotka voivat suorittua ennen usb_serial_init()-kutsua.
-        //            Käytä TinyUSB-kirjastoa datan lähettämiseen toisen sarjaportin (CDC 1) kautta.
-        //            Voit käyttää funktioita: https://github.com/hathach/tinyusb/blob/master/src/class/cdc/cdc_device.h
-        //            Esimerkki löytyy hello_dual_cdc-projektista.
-        //            Tällä menetelmällä kirjoitettu data tulee antaa CSV-muodossa:
-        //            timestamp, illuminance
-
-
-
-
-        // Exercise 3. Just for sanity check. Please, comment this out
-        // Tehtävä 3: Just for sanity check. Please, comment this out
-        // printf("printTask\n");
-        
-        // Do not remove this
-        vTaskDelay(pdMS_TO_TICKS(500));
-    }
-}
-
-
+ 
 // Exercise 4: Uncomment the following line to activate the TinyUSB library.  
 // Tehtävä 4:  Poista seuraavan rivin kommentointi aktivoidaksesi TinyUSB-kirjaston. 
 
-/*
+
 static void usbTask(void *arg) {
     (void)arg;
     while (1) {
         tud_task();              // With FreeRTOS wait for events
                                  // Do not add vTaskDelay. 
     }
-}*/
+}
 
 int main() {
 
@@ -189,7 +172,7 @@ int main() {
     //             Lisää CMakeLists.txt-tiedoston target_link_libraries-kohtaan usb_serial_debug.
     //             Poista CMakeLists.txt-tiedostosta käytöstä pico_enable_stdio_usb
 
-    stdio_init_all();
+    //stdio_init_all();
 
     // Uncomment this lines if you want to wait till the serial monitor is connected
     /*while (!stdio_usb_connected()){
@@ -211,24 +194,30 @@ int main() {
 
 
 
+   
     
-    
-    TaskHandle_t hSensorTask, hPrintTask, hUSB = NULL;
+    TaskHandle_t hSensorTask, hUSB = NULL;
+    BaseType_t result;
 
     // Exercise 4: Uncomment this xTaskCreate to create the task that enables dual USB communication.
     // Tehtävä 4: Poista tämän xTaskCreate-rivin kommentointi luodaksesi tehtävän,
     // joka mahdollistaa kaksikanavaisen USB-viestinnän.
 
-    /*
-    xTaskCreate(usbTask, "usb", 2048, NULL, 3, &hUSB);
+    
+    result = xTaskCreate(usbTask, "usb", 2048, NULL, 3, &hUSB);
+    if (result != pdPASS)
+    {
+    printf("USB taskin luominen epäonnistui\n");
+    return 1;
+    }
     #if (configNUMBER_OF_CORES > 1)
         vTaskCoreAffinitySet(hUSB, 1u << 0);
     #endif
-    */
+    
 
 
     // Create the tasks with xTaskCreate
-    BaseType_t result = xTaskCreate(sensor_task, // (en) Task function
+    result = xTaskCreate(sensor_task, // (en) Task function
                 "sensor",                        // (en) Name of the task 
                 DEFAULT_STACK_SIZE,              // (en) Size of the stack for this task (in words). Generally 1024 or 2048
                 NULL,                            // (en) Arguments of the task 
@@ -239,19 +228,11 @@ int main() {
         printf("Sensor task creation failed\n");
         return 0;
     }
-    result = xTaskCreate(print_task,  // (en) Task function
-                "print",              // (en) Name of the task 
-                DEFAULT_STACK_SIZE,   // (en) Size of the stack for this task (in words). Generally 1024 or 2048
-                NULL,                 // (en) Arguments of the task 
-                2,                    // (en) Priority of this task
-                &hPrintTask);         // (en) A handle to control the execution of this task
 
-    if(result != pdPASS) {
-        printf("Print Task creation failed\n");
-        return 0;
-    }
 
     // Start the scheduler (never returns)
+    tusb_init();
+    usb_serial_init();
     vTaskStartScheduler();
     
     // Never reach this line.
