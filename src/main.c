@@ -9,33 +9,9 @@
 #include <tusb.h>
 #include "usbSerialDebug/helper.h"
 
-// Exercise 4. Include the libraries necessaries to use the usb-serial-debug, and tinyusb
-// Tehtävä 4 . Lisää usb-serial-debugin ja tinyusbin käyttämiseen tarvittavat kirjastot.
-
-
-
 #define DEFAULT_STACK_SIZE 2048
 #define CDC_ITF_TX      1
 #define MORSE_PUSKURIN_KOKO 128
-
-
-
-// Tehtävä 3: Tilakoneen esittely Add missing states.
-// Exercise 3: Definition of the state machine. Add missing states.
-enum state { WAITING=1, DATA_READY=2 };
-enum state programState = WAITING;
-
-// Tehtävä 3: Valoisuuden globaali muuttuja
-// Exercise 3: Global variable for ambient light
-uint32_t ambientLight;
-
-static void btn_fxn(uint gpio, uint32_t eventMask) {
-    // Tehtävä 1: Vaihda LEDin tila käyttämällä TKJHAT SDK:n sopivaa funktiota.
-    // Exercise 1: Toggle the LED using the appropriate function from the TKJHAT SDK.
-    toggle_led();
-    
-
-}
 
 static char MorsePuskuri[MORSE_PUSKURIN_KOKO] = ""; //sensor_task morse viestin puskuri
 static size_t MorsePituus = 0; // sensor_task morse viestin pituus
@@ -154,11 +130,6 @@ static void sensor_task(void *arg){
     }
 }
 
- 
-// Exercise 4: Uncomment the following line to activate the TinyUSB library.  
-// Tehtävä 4:  Poista seuraavan rivin kommentointi aktivoidaksesi TinyUSB-kirjaston. 
-
-
 static void usbTask(void *arg) {
     (void)arg;
     while (1) {
@@ -169,54 +140,22 @@ static void usbTask(void *arg) {
 
 int main() {
 
-    // Exercise 4: Comment the statement stdio_init_all(); 
-    //             Instead, add AT THE END OF MAIN (before vTaskStartScheduler();) adequate statements to enable the TinyUSB library and the usb-serial-debug.
-    //             You can see hello_dual_cdc for help
-    //             In CMakeLists.txt add usb_serial_debug to target_link_libraries.
-    //             In CMakeLists.txt deactivate pico_enable_stdio_usb
-    // Tehtävä 4:  Kommentoi lause stdio_init_all();
-    //             Sen sijaan lisää MAIN LOPPUUN (ennen vTaskStartScheduler();) tarvittavat komennot aktivoidaksesi TinyUSB-kirjaston ja usb-serial-debugin.
-    //             Voit katsoa apua esimerkistä hello_dual_cdc.
-    //             Lisää CMakeLists.txt-tiedoston target_link_libraries-kohtaan usb_serial_debug.
-    //             Poista CMakeLists.txt-tiedostosta käytöstä pico_enable_stdio_usb
-
-    //stdio_init_all();
-
-    // Uncomment this lines if you want to wait till the serial monitor is connected
-    /*while (!stdio_usb_connected()){
-        sleep_ms(10);
-    }*/ 
-    
-    init_hat_sdk();
+    init_hat_sdk(); // Alustetaan TKJHAT SDK 
     sleep_ms(300); //Wait some time so initialization of USB and hat is done.
-    init_buzzer();
-    init_sw1 ();
+    init_buzzer(); // Alustetaan summeri
+    init_sw1 (); // Alustetaan painikkeet
     init_sw2();
     init_led();
-    // gpio_set_irq_enabled_with_callback(SW1_PIN, GPIO_IRQ_EDGE_FALL, true, btn_fxn);
 
-    // Exercise 1: Initialize the button and the led and define an register the corresponding interrupton.
-    //             Interruption handler is defined up as btn_fxn
-    // Tehtävä 1:  Alusta painike ja LEd ja rekisteröi vastaava keskeytys.
-    //             Keskeytyskäsittelijä on määritelty yläpuolella nimellä btn_fxn
-
-
-
-   
-    
-    TaskHandle_t hSensorTask, hUSB = NULL;
-    BaseType_t result;
-
-    // Exercise 4: Uncomment this xTaskCreate to create the task that enables dual USB communication.
-    // Tehtävä 4: Poista tämän xTaskCreate-rivin kommentointi luodaksesi tehtävän,
-    // joka mahdollistaa kaksikanavaisen USB-viestinnän.
+    TaskHandle_t hSensorTask, hUSB = NULL; // USB ja sensoritehtävän taskien käsittelijät
+    BaseType_t result; 
 
     
-    result = xTaskCreate(usbTask, "usb", 2048, NULL, 3, &hUSB);
+    result = xTaskCreate(usbTask, "usb", DEFAULT_STACK_SIZE, NULL, 3, &hUSB);
     if (result != pdPASS)
     {
-    printf("USB taskin luominen epäonnistui\n");
-    return 1;
+        printf("USB taskin luominen epäonnistui\n");
+        return 1;
     }
     #if (configNUMBER_OF_CORES > 1)
         vTaskCoreAffinitySet(hUSB, 1u << 0);
