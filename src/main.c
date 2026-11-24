@@ -13,6 +13,10 @@
 #define CDC_ITF_TX      1
 #define MORSE_PUSKURIN_KOKO 128
 
+
+ // Sampo Niemimaa 
+ // Sanni Uutela
+
 static char MorsePuskuri[MORSE_PUSKURIN_KOKO] = ""; //sensor_task morse viestin puskuri
 static size_t MorsePituus = 0; // sensor_task morse viestin pituus
 
