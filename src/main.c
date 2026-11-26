@@ -16,6 +16,7 @@
 
  // Sampo Niemimaa 
  // Sanni Uutela
+ // Jaamme pisteet 3 ja 3
 
 static char MorsePuskuri[MORSE_PUSKURIN_KOKO] = ""; //sensor_task morse viestin puskuri
 static size_t MorsePituus = 0; // sensor_task morse viestin pituus
